@@ -19,7 +19,7 @@ void *thread_search_dir(void *arg) {
     struct MQDataPack dataPack;
     dataPack.type = FINISH_FLAG;
     dataPack.src_path = dataPack.dest_path = NULL;
-    mq_send(mq, (const char *)&dataPack, sizeof dataPack, 0);
+    mq_send(mq, (const char *) &dataPack, sizeof dataPack, 0);
     mq_close(mq);
     return NULL;
 }
@@ -31,17 +31,17 @@ void *thread_send_dir(void *arg) {
     struct MQDataPack *dataPack = malloc(sizeof(struct MQDataPack));
     bool running_flag = 1;
     while (running_flag) {
-        mq_receive(mq, (char *)(dataPack), sizeof(struct MQDataPack), NULL);
+        mq_receive(mq, (char *) (dataPack), sizeof(struct MQDataPack), NULL);
         switch (dataPack->type) {
-        case COMMAND_MKDIR:
-            send_command_mkdir(data->sockfd, dataPack->dest_path);
-            break;
-        case SEND_FILE:
-            send_file(data->sockfd, dataPack->src_path, dataPack->dest_path);
-            break;
-        case FINISH_FLAG:
-            running_flag = 0;
-            break;
+            case COMMAND_MKDIR:
+                send_command_mkdir(data->sockfd, dataPack->dest_path);
+                break;
+            case SEND_FILE:
+                send_file(data->sockfd, dataPack->src_path, dataPack->dest_path);
+                break;
+            case FINISH_FLAG:
+                running_flag = 0;
+                break;
         }
         free(dataPack->dest_path);
         free(dataPack->src_path);
@@ -52,19 +52,19 @@ void *thread_send_dir(void *arg) {
 
 void send_dir(int sock_fd, const char *src_path, const char *dest_path) {
     struct threadStartSearchDirArg *searchDirArg =
-        malloc(sizeof(struct threadStartSearchDirArg));
+            malloc(sizeof(struct threadStartSearchDirArg));
     searchDirArg->sockfd = sock_fd;
     searchDirArg->src_path = src_path;
     searchDirArg->dest_path = dest_path;
 
     struct threadStartSendDirArg *sendDirArg =
-        malloc(sizeof(struct threadStartSendDirArg));
+            malloc(sizeof(struct threadStartSendDirArg));
     sendDirArg->sockfd = sock_fd;
 
     pthread_t search_thread, send_thread;
     int flag = 0;
     flag +=
-        pthread_create(&search_thread, NULL, thread_search_dir, searchDirArg);
+            pthread_create(&search_thread, NULL, thread_search_dir, searchDirArg);
     flag += pthread_create(&send_thread, NULL, thread_send_dir, sendDirArg);
     if (flag)
         perror("pthread_create");
@@ -79,6 +79,11 @@ void send_dir(int sock_fd, const char *src_path, const char *dest_path) {
 void send_file(const int sock_fd, const char *src_path, const char *dest_path) {
     if (access(src_path, F_OK) < 0) {
         printf("文件不存在\n");
+        return;
+    }
+
+    if (access(src_path, R_OK) < 0) {
+        printf("没有读的权限\n");
         return;
     }
 
@@ -140,9 +145,9 @@ void send_command_mkdir(const int sock_fd, const char *path) {
 void search_dir(const int sock_fd, const char *src_path, const char *dest_path,
                 const int depth, const mqd_t mq_fd) {
     printf(
-        "FUNC "
-        "search_dir:\n\tsockfd:%d\n\tsrc_path:%s\n\tdest_path:%s\n\tdepth:%d\n",
-        sock_fd, src_path, dest_path, depth);
+            "FUNC "
+            "search_dir:\n\tsockfd:%d\n\tsrc_path:%s\n\tdest_path:%s\n\tdepth:%d\n",
+            sock_fd, src_path, dest_path, depth);
     if (depth > 10) {
         printf("递归深度最大为10层\n");
         return;
@@ -181,23 +186,25 @@ void search_dir(const int sock_fd, const char *src_path, const char *dest_path,
             dataPack.src_path = NULL;
             dataPack.dest_path = target_dest_path;
             printf("正在向消息队列发送数据|在%s创建文件夹\n", next_dest_path);
-            mq_send(mq_fd, (const char *)&dataPack, sizeof(struct MQDataPack),
+            mq_send(mq_fd, (const char *) &dataPack, sizeof(struct MQDataPack),
                     0);
             search_dir(sock_fd, next_src_path, next_dest_path, depth + 1,
                        mq_fd);
         } else {
             //            send_file(sock_fd, next_src_path, next_dest_path);
+
             char *target_dest_path = malloc(STR_SIZE);
             strcpy(target_dest_path, next_dest_path);
 
             char *target_src_path = malloc(STR_SIZE);
             strcpy(target_src_path, next_src_path);
 
+
             dataPack.type = SEND_FILE;
             dataPack.src_path = target_src_path;
             dataPack.dest_path = target_dest_path;
             printf("正在向消息队列发送数据|发送文件到%s\n", next_dest_path);
-            mq_send(mq_fd, (const char *)&dataPack, sizeof(struct MQDataPack),
+            mq_send(mq_fd, (const char *) &dataPack, sizeof(struct MQDataPack),
                     0);
         }
     }

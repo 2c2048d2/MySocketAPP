@@ -125,6 +125,7 @@ int main() {
     }
 
     bool running_flag = 1;
+
     while (running_flag) {
         enum userOpt opt = get_user_opt();
         union myDataPackSubtype subtype;

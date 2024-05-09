@@ -52,14 +52,17 @@ void receive_data(void *dest, int src_fd, unsigned long size, bool maybe_null) {
 
 struct myDataPack *receive_data_pack(int sock_fd) {
     struct myDataPack *header = malloc(sizeof(struct myDataPack));
-    receive_data(header, sock_fd, sizeof(struct myDataPack), 1);
-    if (header == NULL)
+    receive_data(header, sock_fd, sizeof(struct myDataPack), 0);
+    if (header == NULL) {
+        printf("DATA PACK HEADER IS NULL \n");
         return NULL;
+    }
+
 
     struct myDataPack *output =
-        malloc(sizeof(struct myDataPack) + header->data_length);
+            malloc(sizeof(struct myDataPack) + header->data_length);
     if (output == NULL)
-        return NULL; // Handle memory allocation failure
+        return header; // Handle memory allocation failure
     memcpy(output, header, sizeof(struct myDataPack));
     receive_data(output->payload, sock_fd, header->data_length, 0);
     free(header);
