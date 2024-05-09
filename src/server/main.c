@@ -2,14 +2,12 @@
 // Created by 2c2048d2 on 24-4-21.
 //
 
-#include <asm-generic/socket.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <malloc.h>
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -43,9 +41,6 @@ int init_server_socket(int *server_fd) {
         perror("Bind");
         return -1;
     }
-
-    int opt = 1;
-    setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt);
 
     // 开始监听
     if (listen(*server_fd, SOMAXCONN) < 0) {
@@ -112,7 +107,6 @@ int main() {
     char *message = malloc(BUF_SIZE); // 在main loop结束之后free
     int file_fd[128] = {0}; // 记录每个socket接收文件时 在本地创建的文件的描述符
     unsigned long file_size[128] = {0};
-    struct myDataPack *data_pack = malloc(sizeof(struct myDataPack));
 
     while (running_flag) {
         int nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
@@ -185,10 +179,10 @@ int main() {
                             subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                             send_data_pack(gen_data_pack(DATA_PACK_TYPE_STATUS,
                                                          subtype, 0, NULL,
-                                                         data_pack),
-                                           fd, 0);
+                                                         NULL),
+                                           fd, 1);
                             running_flag = 0;
-                            exit(0);
+                            break;
                         case DATA_PACK_TYPE_COMMAND_GET_INFO:
                             sprintf(message, "当前共有%d个连接\n",
                                     connect_count);
@@ -196,8 +190,8 @@ int main() {
                             send_data_pack(gen_data_pack(DATA_PACK_TYPE_INFO,
                                                          subtype,
                                                          strlen(message) + 1,
-                                                         message, data_pack),
-                                           fd, 0);
+                                                         message, NULL),
+                                           fd, 1);
                             break;
                         case DATA_PACK_TYPE_COMMAND_MKDIR:
                             printf("正在创建文件夹%s\n", data->payload);
@@ -219,8 +213,8 @@ int main() {
                                     DATA_PACK_TYPE_STATUS_FAILED;
                                 send_data_pack(
                                     gen_data_pack(DATA_PACK_TYPE_STATUS,
-                                                  subtype, 0, NULL, data_pack),
-                                    fd, 0);
+                                                  subtype, 0, NULL, NULL),
+                                    fd, 1);
                             } else {
                                 file_size[fd] = 0;
 
@@ -230,8 +224,8 @@ int main() {
                                 subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                                 send_data_pack(
                                     gen_data_pack(DATA_PACK_TYPE_STATUS,
-                                                  subtype, 0, NULL, data_pack),
-                                    fd, 0);
+                                                  subtype, 0, NULL, NULL),
+                                    fd, 1);
                             }
                             break;
                         case DATA_PACK_TYPE_FILE_SENDING:
@@ -246,8 +240,8 @@ int main() {
                             subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                             send_data_pack(gen_data_pack(DATA_PACK_TYPE_STATUS,
                                                          subtype, 0, NULL,
-                                                         data_pack),
-                                           fd, 0);
+                                                         NULL),
+                                           fd, 1);
                             close(file_fd[fd]);
                             break;
                         }
@@ -263,7 +257,6 @@ int main() {
     }
     // main loop finished
     free(message);
-    free(data_pack);
 
     int fds[] = {epoll_fd, server_fd};
     close_all_fd(fds, sizeof fds);
