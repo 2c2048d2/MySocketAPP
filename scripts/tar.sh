@@ -1,0 +1,1 @@
+tar -cvf source.tar CMakeLists.txt src/ scripts/
