@@ -1,14 +1,14 @@
+#include <fcntl.h> /* For O_* constants */
+#include <mqueue.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h> /* For mode constants */
 #include <unistd.h>
-#include <pthread.h>
-#include <fcntl.h>           /* For O_* constants */
-#include <sys/stat.h>        /* For mode constants */
-#include <mqueue.h>
 
-#define MQ_MSG_MAX_SIZE    512   ///< 最大消息长度 
-#define MQ_MSG_MAX_ITEM    5     ///< 最大消息数目
+#define MQ_MSG_MAX_SIZE 512 ///< 最大消息长度
+#define MQ_MSG_MAX_ITEM 5   ///< 最大消息数目
 
 static pthread_t s_thread1_id;
 static pthread_t s_thread2_id;

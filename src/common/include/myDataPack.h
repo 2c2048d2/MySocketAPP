@@ -7,45 +7,45 @@
 #include <stdbool.h>
 
 enum myDataPackTypeCommand {
-  DATA_PACK_TYPE_COMMAND_QUIT,
-  DATA_PACK_TYPE_COMMAND_GET_INFO,
-  DATA_PACK_TYPE_COMMAND_MKDIR,
+    DATA_PACK_TYPE_COMMAND_QUIT,
+    DATA_PACK_TYPE_COMMAND_GET_INFO,
+    DATA_PACK_TYPE_COMMAND_MKDIR,
 };
 
 enum myDataPackTypeFile {
-  DATA_PACK_TYPE_FILE_START,
-  DATA_PACK_TYPE_FILE_SENDING,
-  DATA_PACK_TYPE_FILE_END,
+    DATA_PACK_TYPE_FILE_START,
+    DATA_PACK_TYPE_FILE_SENDING,
+    DATA_PACK_TYPE_FILE_END,
 };
 
 enum myDataPackTypeStatus {
-  DATA_PACK_TYPE_STATUS_OK,
-  DATA_PACK_TYPE_STATUS_FAILED,
+    DATA_PACK_TYPE_STATUS_OK,
+    DATA_PACK_TYPE_STATUS_FAILED,
 };
 
 enum myDataPackTypeInfo {
-  DATA_PACK_TYPE_INFO_NORMAL,
+    DATA_PACK_TYPE_INFO_NORMAL,
 };
 
 enum myDataPackType {
-  DATA_PACK_TYPE_INFO,
-  DATA_PACK_TYPE_COMMAND,
-  DATA_PACK_TYPE_FILE,
-  DATA_PACK_TYPE_STATUS,
+    DATA_PACK_TYPE_INFO,
+    DATA_PACK_TYPE_COMMAND,
+    DATA_PACK_TYPE_FILE,
+    DATA_PACK_TYPE_STATUS,
 };
 
 union myDataPackSubtype {
-  enum myDataPackTypeCommand command_type;
-  enum myDataPackTypeFile file_type;
-  enum myDataPackTypeStatus status_type;
-  enum myDataPackTypeInfo info_type;
+    enum myDataPackTypeCommand command_type;
+    enum myDataPackTypeFile file_type;
+    enum myDataPackTypeStatus status_type;
+    enum myDataPackTypeInfo info_type;
 };
 
 struct myDataPack {
-  enum myDataPackType type;
-  union myDataPackSubtype subtype;
-  unsigned long data_length;
-  char payload[0];
+    enum myDataPackType type;
+    union myDataPackSubtype subtype;
+    unsigned long data_length;
+    char payload[0];
 };
 
 struct myDataPack *gen_data_pack(enum myDataPackType type,

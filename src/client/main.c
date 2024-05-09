@@ -1,16 +1,15 @@
 //
 // Created by 2c2048d2 on 24-4-21.
 //
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <string.h>
 #include <arpa/inet.h>
-#include <stdbool.h>
-#include <stdlib.h>
 #include <mqueue.h>
-#include <errno.h>
+#include <netinet/in.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include "fileFunctions.h"
 #include "myConfig.h"
@@ -46,7 +45,8 @@ enum userOpt get_user_opt() {
             fflush(stdin);
         } else if (opt < 1 || opt > 8) {
             printf("没有这个选项\n");
-        } else ok = 1;
+        } else
+            ok = 1;
     } while (!ok);
     return opt;
 }
@@ -82,7 +82,8 @@ int init_socket(int *client_fd) {
         return -1;
     }
 
-    status = connect(*client_fd, (struct sockaddr *) &server_addr, sizeof server_addr);
+    status = connect(*client_fd, (struct sockaddr *)&server_addr,
+                     sizeof server_addr);
     if (status < 0) {
         perror("connect");
         return -1;
@@ -99,13 +100,12 @@ int init_MQ() {
     attr.mq_msgsize = sizeof(struct MQDataPack);
     attr.mq_maxmsg = 10;
     int mq = mq_open(MQ_NAME_SEND_DIR, O_CREAT | O_EXCL | O_RDWR, 0777, &attr);
-    if (mq < 0) return -1;
+    if (mq < 0)
+        return -1;
     return 1;
 }
 
-void cleanup_MQ() {
-    mq_unlink(MQ_NAME_SEND_DIR);
-}
+void cleanup_MQ() { mq_unlink(MQ_NAME_SEND_DIR); }
 
 int main() {
     int client_fd;
@@ -124,76 +124,84 @@ int main() {
         return -1;
     }
 
-
     bool running_flag = 1;
     while (running_flag) {
         enum userOpt opt = get_user_opt();
         union myDataPackSubtype subtype;
         switch (opt) {
-            case USER_OPT_UPLOAD: {
-                size_t buf_size = BUF_SIZE;
-                printf("请输入你要上传的文件:\n");
-                char *filepath = malloc(buf_size);
-                getline(&filepath, &buf_size, stdin);
-                rtrim(filepath);
-                send_file(client_fd, filepath, path2filename(filepath));
-                free(filepath);
-                break;
-            }
-            case USER_OPT_UPLOAD_DIR: {
-                size_t buf_size = BUF_SIZE;
-                printf("请输入你要发送的文件夹:\n");
-                char *path = malloc(sizeof(char) * buf_size);
-                getline(&path, &buf_size, stdin);
-                rtrim(path);
-                printf("获取到的路径:%s\n", path);
-                const char *dir_name = path2filename(path);
-                char *start_relative_path = malloc(STR_SIZE);
-                sprintf(start_relative_path, "./%s", dir_name);
-                if (is_file_dir(path) > 0) {
-                    send_command_mkdir(client_fd, start_relative_path);
-                    send_dir(client_fd, path, start_relative_path);
-                } else printf("文件(夹)不存在\n");
-                free(path);
-                break;
-            }
-            case USER_OPT_DOWNLOAD:
-            case USER_OPT_DOWNLOAD_DIR:
-                printf("DNF\n");
-                break;
-            case USER_OPT_SEND_MESSAGE: {
-                size_t buf_size = BUF_SIZE;
-                printf("请输入你要向服务端发送的消息：\n");
-                char *buffer = malloc(sizeof(char) * buf_size);
-                getline(&buffer, &buf_size, stdin);
-                rtrim(buffer);
+        case USER_OPT_UPLOAD: {
+            size_t buf_size = BUF_SIZE;
+            printf("请输入你要上传的文件:\n");
+            char *filepath = malloc(buf_size);
+            getline(&filepath, &buf_size, stdin);
+            rtrim(filepath);
+            send_file(client_fd, filepath, path2filename(filepath));
+            free(filepath);
+            break;
+        }
+        case USER_OPT_UPLOAD_DIR: {
+            size_t buf_size = BUF_SIZE;
+            printf("请输入你要发送的文件夹:\n");
+            char *path = malloc(sizeof(char) * buf_size);
+            getline(&path, &buf_size, stdin);
+            rtrim(path);
+            printf("获取到的路径:%s\n", path);
+            const char *dir_name = path2filename(path);
+            char *start_relative_path = malloc(STR_SIZE);
+            sprintf(start_relative_path, "./%s", dir_name);
+            if (is_file_dir(path) > 0) {
+                send_command_mkdir(client_fd, start_relative_path);
+                send_dir(client_fd, path, start_relative_path);
+            } else
+                printf("文件(夹)不存在\n");
+            free(path);
+            break;
+        }
+        case USER_OPT_DOWNLOAD:
+        case USER_OPT_DOWNLOAD_DIR:
+            printf("DNF\n");
+            break;
+        case USER_OPT_SEND_MESSAGE: {
+            size_t buf_size = BUF_SIZE;
+            printf("请输入你要向服务端发送的消息：\n");
+            char *buffer = malloc(sizeof(char) * buf_size);
+            getline(&buffer, &buf_size, stdin);
+            rtrim(buffer);
 
-                subtype.info_type = DATA_PACK_TYPE_INFO_NORMAL;
-                send_data_pack(gen_data_pack(DATA_PACK_TYPE_INFO, subtype, strlen(buffer), buffer, NULL), client_fd, 1);
-                free(buffer);
-                break;
-            }
-            case USER_OPT_INFO: {
-                subtype.command_type = DATA_PACK_TYPE_COMMAND_GET_INFO;
-                send_data_pack(gen_data_pack(DATA_PACK_TYPE_COMMAND, subtype, 0, NULL, NULL), client_fd, 1);
-                struct myDataPack *p = receive_data_pack(client_fd);
-                printf("服务器的数据：\n%s", p->payload);
-                free(p);
-                break;
-            }
-            case USER_OPT_QUIT:
+            subtype.info_type = DATA_PACK_TYPE_INFO_NORMAL;
+            send_data_pack(gen_data_pack(DATA_PACK_TYPE_INFO, subtype,
+                                         strlen(buffer), buffer, NULL),
+                           client_fd, 1);
+            free(buffer);
+            break;
+        }
+        case USER_OPT_INFO: {
+            subtype.command_type = DATA_PACK_TYPE_COMMAND_GET_INFO;
+            send_data_pack(
+                gen_data_pack(DATA_PACK_TYPE_COMMAND, subtype, 0, NULL, NULL),
+                client_fd, 1);
+            struct myDataPack *p = receive_data_pack(client_fd);
+            printf("服务器的数据：\n%s", p->payload);
+            free(p);
+            break;
+        }
+        case USER_OPT_QUIT:
+            running_flag = 0;
+            break;
+        case USER_OPT_STOP_SERVER:
+
+            subtype.command_type = DATA_PACK_TYPE_COMMAND_QUIT;
+            send_data_pack(
+                gen_data_pack(DATA_PACK_TYPE_COMMAND, subtype, 0, NULL, NULL),
+                client_fd, 1);
+            struct myDataPack *p = receive_data_pack(client_fd);
+            if (p->type == DATA_PACK_TYPE_STATUS &&
+                p->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
+                printf("服务器已退出\n");
                 running_flag = 0;
-                break;
-            case USER_OPT_STOP_SERVER:
-
-                subtype.command_type = DATA_PACK_TYPE_COMMAND_QUIT;
-                send_data_pack(gen_data_pack(DATA_PACK_TYPE_COMMAND, subtype, 0, NULL, NULL), client_fd, 1);
-                struct myDataPack *p = receive_data_pack(client_fd);
-                if (p->type == DATA_PACK_TYPE_STATUS && p->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
-                    printf("服务器已退出\n");
-                    running_flag = 0;
-                } else printf("未收到服务器成功退出的消息\n");
-                break;
+            } else
+                printf("未收到服务器成功退出的消息\n");
+            break;
         }
     }
     close(client_fd);

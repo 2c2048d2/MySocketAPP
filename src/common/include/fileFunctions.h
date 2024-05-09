@@ -5,6 +5,17 @@
 #ifndef MYSOCKETAPP_FILEFUNCTIONS_H
 #define MYSOCKETAPP_FILEFUNCTIONS_H
 
+#include <dirent.h>
+#include <fcntl.h>
+#include <mqueue.h>
+#include <myConfig.h>
+#include <pthread.h>
+#include <stdbool.h>
+
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <stdbool.h>
 enum MQDataPackType {
     COMMAND_MKDIR,
     SEND_FILE,
@@ -41,8 +52,9 @@ void send_file(int sock_fd, const char *src_path, const char *dest_path);
 
 void send_dir(int sock_fd, const char *src_path, const char *dest_path);
 
-void search_dir(int sock_fd, const char *src_path, const char *dest_path, int depth, mqd_t mq_fd);
+void search_dir(int sock_fd, const char *src_path, const char *dest_path,
+                int depth, mqd_t mq_fd);
 
 void send_command_mkdir(int sock_fd, const char *path);
 
-#endif //MYSOCKETAPP_FILEFUNCTIONS_H
+#endif // MYSOCKETAPP_FILEFUNCTIONS_H
