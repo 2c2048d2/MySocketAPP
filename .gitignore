@@ -1,4 +1,6 @@
 .vimrc
 .idea
 .cache
-build
+build/
+out/
+scripts/tar2mnt.sh
