@@ -86,15 +86,14 @@ void send_dir(int sock_fd, const char *src_path, const char *dest_path,
 
 void send_file(const int sock_fd, const char *src_path, const char *dest_path,
                struct myDataPack *datapack) {
-    if (access(src_path, F_OK) < 0) {
-        printf("文件不存在或无读的权限\n");
+    if (access(src_path, F_OK | R_OK) < 0) {
+        printf("无法访问文件%s\n", src_path);
         return;
     }
-    printf("send_file point0\n");
     union myDataPackSubtype subtype;
 
-    printf("源文件路径:%s\n", src_path);
-    printf("目标路径:%s\n", dest_path);
+    // printf("源文件路径:%s\n", src_path);
+    // printf("目标路径:%s\n", dest_path);
     subtype.file_type = DATA_PACK_TYPE_FILE_START;
     send_data_pack(gen_data_pack(DATA_PACK_TYPE_FILE, subtype,
                                  strlen(dest_path) + 1, dest_path, datapack),
@@ -102,14 +101,11 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path,
 
     receive_data_pack(sock_fd, datapack);
 
-    printf("send_file point1\n");
-
     if (datapack->type != DATA_PACK_TYPE_STATUS ||
         datapack->subtype.status_type != DATA_PACK_TYPE_STATUS_OK) {
         printf("对方未就绪\n");
         return;
     }
-    printf("send_file point2\n");
     const int file_sock = open(src_path, O_RDONLY);
     unsigned long length;
     subtype.file_type = DATA_PACK_TYPE_FILE_SENDING;
@@ -132,7 +128,7 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path,
     receive_data_pack(sock_fd, datapack);
     if (datapack->type == DATA_PACK_TYPE_STATUS &&
         datapack->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
-        printf("传输完成，没有发现错误\n");
+        printf("%s传输完成，没有发现错误\n", src_path);
     } else printf("传输过程中出现错误\n");
 }
 
@@ -189,7 +185,8 @@ void search_dir(const int sock_fd, const char *src_path, const char *dest_path,
             dataPack.type = COMMAND_MKDIR;
             dataPack.src_path = NULL;
             dataPack.dest_path = target_dest_path;
-            printf("正在向消息队列发送数据|在%s创建文件夹\n", next_dest_path);
+            // printf("正在向消息队列发送数据|在%s创建文件夹\n",
+            // next_dest_path);
             mq_send(mq_fd, (const char *)&dataPack, sizeof(struct MQDataPack),
                     0);
             search_dir(sock_fd, next_src_path, next_dest_path, depth + 1,
@@ -205,7 +202,7 @@ void search_dir(const int sock_fd, const char *src_path, const char *dest_path,
             dataPack.type = SEND_FILE;
             dataPack.src_path = target_src_path;
             dataPack.dest_path = target_dest_path;
-            printf("正在向消息队列发送数据|发送文件到%s\n", next_dest_path);
+            // printf("正在向消息队列发送数据|发送文件到%s\n", next_dest_path);
             if (mq_send(mq_fd, (const char *)&dataPack,
                         sizeof(struct MQDataPack), 0) < 0) {
                 perror("mq_send");

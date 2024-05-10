@@ -110,7 +110,7 @@ int init_MQ() {
 void cleanup() { mq_unlink(MQ_NAME_SEND_DIR); }
 
 int main() {
-    static int client_fd;
+    int client_fd;
     int flag;
     if ((flag = init_socket(&client_fd)) < 0) {
         if (flag > -2) close(client_fd);

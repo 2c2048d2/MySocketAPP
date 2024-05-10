@@ -220,8 +220,8 @@ int main() {
                             } else {
                                 file_size[fd] = 0;
 
-                                printf("文件创建成功，描述符为%d\n",
-                                       new_file_fd);
+                                // printf("文件创建成功，描述符为%d\n",
+                                //        new_file_fd);
                                 file_fd[fd] = new_file_fd;
                                 subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                                 send_data_pack(
@@ -231,8 +231,8 @@ int main() {
                             }
                             break;
                         case DATA_PACK_TYPE_FILE_SENDING:
-                            printf("当前文件已接收%ld字节数据\r",
-                                   file_size[fd] += datapack->data_length);
+                            // printf("当前文件已接收%ld字节数据\r",
+                            //        file_size[fd] += datapack->data_length);
                             if (!write_until_finish(file_fd[fd],
                                                     datapack->payload,
                                                     datapack->data_length)) {
