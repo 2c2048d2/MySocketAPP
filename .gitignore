@@ -2,5 +2,7 @@
 !scripts/
 !src/
 !CMakeLists.txt
+!.clang-format
+!README.md
 
 scripts/tar2mnt.sh
