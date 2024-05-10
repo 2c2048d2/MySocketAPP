@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
@@ -236,8 +237,11 @@ int main() {
                                    file_size[fd] += data->data_length);
                             /* FIXME function 'write' might be not writting all
                              * data info fd */
-                            write_until_finish(file_fd[fd], data->payload,
-                                               data->data_length);
+                            if (!write_until_finish(file_fd[fd], data->payload,
+                                                    data->data_length)) {
+                                perror("receiving file -> write");
+                                exit(1);
+                            }
                             break;
                         case DATA_PACK_TYPE_FILE_END:
                             file_size[fd] = 0;

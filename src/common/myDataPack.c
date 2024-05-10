@@ -31,10 +31,12 @@ struct myDataPack *gen_data_pack(enum myDataPackType type,
 
 void receive_data(void *dest, int src_fd, unsigned long size) {
     if (dest == NULL) {
-        printf("!!! receive_data -> \n\t dest IS NULL !!!\n");
+        printf("receive_data -> \n\t dest IS NULL\n");
         return;
     }
-    read_until_finish(src_fd, dest, size);
+    if (!read_until_finish(src_fd, dest, size)) {
+        perror("receive_dara read");
+    }
 }
 
 struct myDataPack *receive_data_pack(int sock_fd) {
@@ -58,8 +60,11 @@ void send_data_pack(struct myDataPack *data_pack, int sock_fd,
         return;
     }
 
-    send_until_finish(sock_fd, data_pack,
-                      sizeof(struct myDataPack) + data_pack->data_length);
+    if (!send_until_finish(sock_fd, data_pack,
+                           sizeof(struct myDataPack) +
+                               data_pack->data_length)) {
+        perror("send_data_pack send");
+    }
 
     if (free_data_pack) free(data_pack);
 }
@@ -71,7 +76,7 @@ bool write_until_finish(int fd, const void *buf, size_t n) {
         if (now >= 0) cnt += now;
         else {
             perror("write");
-            return 0;
+            return false;
         }
     } while (cnt < n);
     return true;
@@ -82,8 +87,8 @@ bool read_until_finish(int fd, void *buf, size_t n) {
         now = read(fd, buf + cnt, n - cnt);
         if (now >= 0) cnt += now;
         else {
-            perror("write");
-            return 0;
+            perror("read");
+            return false;
         }
     } while (cnt < n);
     return true;
@@ -94,8 +99,8 @@ bool send_until_finish(int fd, const void *buf, size_t n) {
         now = send(fd, buf + cnt, n - cnt, 0);
         if (now >= 0) cnt += now;
         else {
-            perror("write");
-            return 0;
+            perror("send");
+            return false;
         }
     } while (cnt < n);
     return true;
