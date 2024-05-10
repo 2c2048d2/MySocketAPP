@@ -232,8 +232,8 @@ int main() {
                                    file_size[fd] += data->data_length);
                             /* FIXME function 'write' might be not writting all
                              * data info fd */
-                            write(file_fd[fd], data->payload,
-                                  data->data_length);
+                            write_until_finish(file_fd[fd], data->payload,
+                                               data->data_length);
                             break;
                         case DATA_PACK_TYPE_FILE_END:
                             file_size[fd] = 0;
