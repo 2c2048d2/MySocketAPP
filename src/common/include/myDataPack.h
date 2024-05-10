@@ -5,6 +5,7 @@
 #ifndef MYSOCKETAPP_MYDATAPACK_H
 #define MYSOCKETAPP_MYDATAPACK_H
 #include <stdbool.h>
+#include <stddef.h>
 
 enum myDataPackTypeCommand {
     DATA_PACK_TYPE_COMMAND_QUIT,
@@ -57,5 +58,11 @@ struct myDataPack *receive_data_pack(int sock_fd);
 
 void send_data_pack(struct myDataPack *data_pack, int sock_fd,
                     bool free_data_pack);
+
+bool write_until_finish(int fd, const void *buf, size_t n);
+
+bool read_until_finish(int fd, void *buf, size_t n);
+
+bool send_until_finish(int fd, const void *buf, size_t n);
 
 #endif // MYSOCKETAPP_MYDATAPACK_H

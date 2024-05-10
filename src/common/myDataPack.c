@@ -25,43 +25,28 @@ struct myDataPack *gen_data_pack(enum myDataPackType type,
     dataPack->type = type;
     dataPack->subtype = subtype;
     dataPack->data_length = data_length;
-    if (data_length)
-        memcpy(dataPack->payload, payload, data_length);
+    if (data_length) memcpy(dataPack->payload, payload, data_length);
     return dataPack;
 }
 
-void receive_data(void *dest, int src_fd, unsigned long size, bool maybe_null) {
+void receive_data(void *dest, int src_fd, unsigned long size) {
     if (dest == NULL) {
         printf("!!! receive_data -> \n\t dest IS NULL !!!\n");
         return;
     }
-    long cnt = 0;
-    do {
-        long now = read(src_fd, dest + cnt, size - cnt);
-        if (maybe_null && now == 0 && cnt == 0) {
-            free(dest);
-            dest = NULL;
-            return;
-        }
-        if (now >= 0)
-            cnt += now;
-        else
-            perror("read");
-    } while (cnt < size);
+    read_until_finish(src_fd, dest, size);
 }
 
 struct myDataPack *receive_data_pack(int sock_fd) {
     struct myDataPack *header = malloc(sizeof(struct myDataPack));
-    receive_data(header, sock_fd, sizeof(struct myDataPack), 1);
-    if (header == NULL)
-        return NULL;
+    receive_data(header, sock_fd, sizeof(struct myDataPack));
+    if (header == NULL) return NULL;
 
     struct myDataPack *output =
         malloc(sizeof(struct myDataPack) + header->data_length);
-    if (output == NULL)
-        return NULL; // Handle memory allocation failure
+    if (output == NULL) return NULL; // Handle memory allocation failure
     memcpy(output, header, sizeof(struct myDataPack));
-    receive_data(output->payload, sock_fd, header->data_length, 0);
+    receive_data(output->payload, sock_fd, header->data_length);
     free(header);
     return output;
 }
@@ -72,8 +57,46 @@ void send_data_pack(struct myDataPack *data_pack, int sock_fd,
         printf("send_data_pack: data_pack is NULL \n");
         return;
     }
-    send(sock_fd, data_pack, sizeof(struct myDataPack) + data_pack->data_length,
-         0);
-    if (free_data_pack)
-        free(data_pack);
+
+    send_until_finish(sock_fd, data_pack,
+                      sizeof(struct myDataPack) + data_pack->data_length);
+
+    if (free_data_pack) free(data_pack);
+}
+
+bool write_until_finish(int fd, const void *buf, size_t n) {
+    size_t cnt = 0, now = 0;
+    do {
+        now = write(fd, buf + cnt, n - cnt);
+        if (now >= 0) cnt += now;
+        else {
+            perror("write");
+            return 0;
+        }
+    } while (cnt < n);
+    return true;
+}
+bool read_until_finish(int fd, void *buf, size_t n) {
+    size_t cnt = 0, now = 0;
+    do {
+        now = read(fd, buf + cnt, n - cnt);
+        if (now >= 0) cnt += now;
+        else {
+            perror("write");
+            return 0;
+        }
+    } while (cnt < n);
+    return true;
+}
+bool send_until_finish(int fd, const void *buf, size_t n) {
+    size_t cnt = 0, now = 0;
+    do {
+        now = send(fd, buf + cnt, n - cnt, 0);
+        if (now >= 0) cnt += now;
+        else {
+            perror("write");
+            return 0;
+        }
+    } while (cnt < n);
+    return true;
 }

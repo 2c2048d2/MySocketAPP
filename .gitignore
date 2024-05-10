@@ -1,6 +1,6 @@
-.vimrc
-.idea
-.cache
-build/
-out/
+*
+!scripts/
+!src/
+!CMakeLists.txt
+
 scripts/tar2mnt.sh

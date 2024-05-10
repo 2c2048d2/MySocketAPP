@@ -45,8 +45,7 @@ enum userOpt get_user_opt() {
             fflush(stdin);
         } else if (opt < 1 || opt > 8) {
             printf("没有这个选项\n");
-        } else
-            ok = 1;
+        } else ok = 1;
     } while (!ok);
     return opt;
 }
@@ -100,16 +99,20 @@ int init_MQ() {
     attr.mq_msgsize = sizeof(struct MQDataPack);
     attr.mq_maxmsg = 10;
     int mq = mq_open(MQ_NAME_SEND_DIR, O_CREAT | O_EXCL | O_RDWR, 0777, &attr);
-    if (mq < 0)
-        return -1;
+    if (mq < 0) return -1;
     return 1;
 }
 
-void cleanup_MQ() { mq_unlink(MQ_NAME_SEND_DIR); }
+void cleanup_MQ() {
+    mq_unlink(MQ_NAME_SEND_DIR);
+    /* FIXME mq_close(MQ_NAME_SEND_DIR);
+     * user maybe not use send_dir option so that mq will be not closed */
+}
 
 int main() {
     int client_fd;
     if (init_socket(&client_fd) < 0) {
+        /* FIXME close client_fd if it's initialized done */
         perror("init socket");
         return -1;
     }
@@ -152,8 +155,7 @@ int main() {
             if (is_file_dir(path) > 0) {
                 send_command_mkdir(client_fd, start_relative_path);
                 send_dir(client_fd, path, start_relative_path);
-            } else
-                printf("文件(夹)不存在\n");
+            } else printf("文件(夹)不存在\n");
             free(path);
             break;
         }
@@ -199,8 +201,7 @@ int main() {
                 p->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
                 printf("服务器已退出\n");
                 running_flag = 0;
-            } else
-                printf("未收到服务器成功退出的消息\n");
+            } else printf("未收到服务器成功退出的消息\n");
             break;
         }
     }

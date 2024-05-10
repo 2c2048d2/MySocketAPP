@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 // #include <errno.h>
 
 #include "fileFunctions.h"
@@ -66,8 +68,7 @@ void send_dir(int sock_fd, const char *src_path, const char *dest_path) {
     flag +=
         pthread_create(&search_thread, NULL, thread_search_dir, searchDirArg);
     flag += pthread_create(&send_thread, NULL, thread_send_dir, sendDirArg);
-    if (flag)
-        perror("pthread_create");
+    if (flag) perror("pthread_create");
 
     pthread_join(search_thread, NULL);
     pthread_join(send_thread, NULL);
@@ -77,8 +78,8 @@ void send_dir(int sock_fd, const char *src_path, const char *dest_path) {
 }
 
 void send_file(const int sock_fd, const char *src_path, const char *dest_path) {
-    if (access(src_path, F_OK) < 0) {
-        printf("文件不存在\n");
+    if (access(src_path, F_OK | R_OK) < 0) {
+        printf("文件不存在或无读的权限\n");
         return;
     }
 
@@ -114,7 +115,7 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path) {
 
     free(dataPack);
     free(payload);
-
+    /* FIXME: read 可能发生其它错误 */
     subtype.file_type = DATA_PACK_TYPE_FILE_END;
     send_data_pack(gen_data_pack(DATA_PACK_TYPE_FILE, subtype, 0, NULL, NULL),
                    sock_fd, 1);
@@ -123,8 +124,7 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path) {
     if (received_data_pack->type == DATA_PACK_TYPE_STATUS &&
         received_data_pack->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
         printf("传输完成，没有发现错误\n");
-    } else
-        printf("传输过程中出现错误\n");
+    } else printf("传输过程中出现错误\n");
     free(received_data_pack);
 }
 
@@ -206,10 +206,8 @@ void search_dir(const int sock_fd, const char *src_path, const char *dest_path,
 
 const char *path2filename(const char *path) {
     const char *last_slash = strrchr(path, '/');
-    if (last_slash == NULL)
-        return path;
-    else
-        return last_slash + 1;
+    if (last_slash == NULL) return path;
+    else return last_slash + 1;
 }
 
 void rtrim(char *str) {
@@ -222,24 +220,18 @@ void rtrim(char *str) {
 
 bool is_dir(const char *path) {
     struct stat stat_buf;
-    if (stat(path, &stat_buf) != 0)
-        return false;
-    else
-        return S_ISDIR(stat_buf.st_mode);
+    if (stat(path, &stat_buf) != 0) return false;
+    else return S_ISDIR(stat_buf.st_mode);
 }
 
 bool is_file(const char *path) {
     struct stat stat_buf;
-    if (stat(path, &stat_buf) != 0)
-        return false;
-    else
-        return S_ISREG(stat_buf.st_mode);
+    if (stat(path, &stat_buf) != 0) return false;
+    else return S_ISREG(stat_buf.st_mode);
 }
 
 bool is_file_dir(const char *path) {
     struct stat stat_buf;
-    if (stat(path, &stat_buf) != 0)
-        return false;
-    else
-        return S_ISDIR(stat_buf.st_mode) || S_ISREG(stat_buf.st_mode);
+    if (stat(path, &stat_buf) != 0) return false;
+    else return S_ISDIR(stat_buf.st_mode) || S_ISREG(stat_buf.st_mode);
 }
