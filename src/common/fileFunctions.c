@@ -202,8 +202,12 @@ void search_dir(const int sock_fd, const char *src_path, const char *dest_path,
             dataPack.src_path = target_src_path;
             dataPack.dest_path = target_dest_path;
             printf("正在向消息队列发送数据|发送文件到%s\n", next_dest_path);
-            mq_send(mq_fd, (const char *)&dataPack, sizeof(struct MQDataPack),
-                    0);
+            if (mq_send(mq_fd, (const char *)&dataPack,
+                        sizeof(struct MQDataPack), 0) < 0) {
+                perror("mq_send");
+                mq_close(mq_fd);
+                exit(EXIT_FAILURE);
+            }
         }
     }
     closedir(p_dir);
