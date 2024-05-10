@@ -54,7 +54,7 @@ int init_socket(int *client_fd) {
     int status = *client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (status < 0) {
         perror("socket");
-        return -1;
+        return -2;
     }
 
     int opt = 1;
@@ -114,8 +114,9 @@ void cleanup_MQ() {
 
 int main() {
     int client_fd;
-    if (init_socket(&client_fd) < 0) {
-        /* FIXME close client_fd if it's initialized done */
+    int flag;
+    if ((flag = init_socket(&client_fd)) < 0) {
+        if (flag > -2) close(client_fd);
         perror("init socket");
         return -1;
     }
