@@ -90,8 +90,6 @@ int init(int *server_fd, int *epoll_fd) {
 void close_all_fd(const int *list, int n) {
     for (int i = 0; i < n; i++)
         close(*(list + i));
-    while (1) {
-    }
 }
 
 int main() {
@@ -126,10 +124,6 @@ int main() {
                 int client_fd;
                 while ((client_fd = accept(server_fd, NULL, NULL)) > 0) {
                     connect_count++;
-
-                    int opt = 1;
-                    setsockopt(client_fd, SOL_SOCKET, SO_REUSEADDR, &opt,
-                               sizeof opt);
 
                     // addr
                     printf("新连接，描述符为%d\n", client_fd);
