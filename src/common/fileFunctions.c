@@ -107,7 +107,11 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path) {
     subtype.file_type = DATA_PACK_TYPE_FILE_SENDING;
     char *payload = malloc(sizeof(char) * BUF_SIZE);
     struct myDataPack *dataPack = malloc(sizeof(struct myDataPack) + BUF_SIZE);
-    while ((length = read(file_sock, payload, BUF_SIZE)) > 0) {
+    while ((length = read(file_sock, payload, BUF_SIZE))) {
+        if (length < 0) {
+            perror("send file -> read");
+            return;
+        }
         send_data_pack(gen_data_pack(DATA_PACK_TYPE_FILE, subtype, length,
                                      payload, dataPack),
                        sock_fd, 0);
@@ -115,7 +119,6 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path) {
 
     free(dataPack);
     free(payload);
-    /* FIXME: read 可能发生其它错误 */
     subtype.file_type = DATA_PACK_TYPE_FILE_END;
     send_data_pack(gen_data_pack(DATA_PACK_TYPE_FILE, subtype, 0, NULL, NULL),
                    sock_fd, 1);
