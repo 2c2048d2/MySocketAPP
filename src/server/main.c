@@ -42,15 +42,15 @@ int init_server_socket(int *server_fd) {
         return -1;
     }
 
+    /* 防止退出后继续占用端口 */
+    int opt = 1;
+    setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt);
+
     // 开始监听
     if (listen(*server_fd, SOMAXCONN) < 0) {
         perror("listen");
         return -1;
     }
-
-    // 设置为非阻塞模式
-    int origin_flags = fcntl(*server_fd, F_GETFL, 0);
-    fcntl(*server_fd, F_SETFL, origin_flags | O_NONBLOCK);
 
     return 1;
 }
@@ -125,6 +125,10 @@ int main() {
                 int client_fd;
                 while ((client_fd = accept(server_fd, NULL, NULL)) > 0) {
                     connect_count++;
+
+                    int opt = 1;
+                    setsockopt(client_fd, SOL_SOCKET, SO_REUSEADDR, &opt,
+                               sizeof opt);
 
                     // addr
                     printf("新连接，描述符为%d\n", client_fd);

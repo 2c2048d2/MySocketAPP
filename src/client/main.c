@@ -57,6 +57,9 @@ int init_socket(int *client_fd) {
         return -1;
     }
 
+    int opt = 1;
+    setsockopt(*client_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof opt);
+
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(SERVER_PORT);
