@@ -2,6 +2,7 @@
 // Created by 2c2048d2 on 24-5-1.
 //
 
+#include <mqueue.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -49,6 +50,7 @@ void *thread_send_dir(void *arg) {
         free(dataPack->src_path);
     }
     free(dataPack);
+    mq_close(mq);
     return NULL;
 }
 

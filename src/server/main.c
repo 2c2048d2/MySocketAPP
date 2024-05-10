@@ -235,8 +235,6 @@ int main() {
                         case DATA_PACK_TYPE_FILE_SENDING:
                             printf("当前文件已接收%ld字节数据\r",
                                    file_size[fd] += data->data_length);
-                            /* FIXME function 'write' might be not writting all
-                             * data info fd */
                             if (!write_until_finish(file_fd[fd], data->payload,
                                                     data->data_length)) {
                                 perror("receiving file -> write");

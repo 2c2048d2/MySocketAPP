@@ -95,22 +95,18 @@ int init_socket(int *client_fd) {
 }
 
 int init_MQ() {
-    mq_unlink(MQ_NAME_SEND_DIR);
     struct mq_attr attr;
     attr.mq_curmsgs = 0;
     attr.mq_flags = 0;
     attr.mq_msgsize = sizeof(struct MQDataPack);
     attr.mq_maxmsg = 10;
-    int mq = mq_open(MQ_NAME_SEND_DIR, O_CREAT | O_EXCL | O_RDWR, 0777, &attr);
+    int mq = mq_open(MQ_NAME_SEND_DIR, O_CREAT | O_EXCL, 0600, &attr);
+    close(mq);
     if (mq < 0) return -1;
-    return 1;
+    return 0;
 }
 
-void cleanup_MQ() {
-    mq_unlink(MQ_NAME_SEND_DIR);
-    /* FIXME mq_close(MQ_NAME_SEND_DIR);
-     * user maybe not use send_dir option so that mq will be not closed */
-}
+void cleanup_MQ() { mq_unlink(MQ_NAME_SEND_DIR); }
 
 int main() {
     int client_fd;
