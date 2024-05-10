@@ -107,6 +107,8 @@ int main() {
     int file_fd[128] = {0}; // 记录每个socket接收文件时 在本地创建的文件的描述符
     unsigned long file_size[128] = {0};
 
+    struct myDataPack *datapack = malloc(sizeof(struct myDataPack) + BUF_SIZE);
+
     while (running_flag) {
         int nfds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
         /* nfds => number of file descriptors */
@@ -122,27 +124,26 @@ int main() {
             if (fd == server_fd) {
                 // 服务器的事件(accept
                 int client_fd;
-                while ((client_fd = accept(server_fd, NULL, NULL)) > 0) {
-                    connect_count++;
+                client_fd = accept(server_fd, NULL, NULL);
+                connect_count++;
 
-                    // addr
-                    printf("新连接，描述符为%d\n", client_fd);
+                // addr
+                printf("新连接，描述符为%d\n", client_fd);
 
-                    // 设置为非阻塞模式
-                    //                    int flags = fcntl(client_fd, F_GETFL,
-                    //                    0); // F_GET FL =>
-                    //                    获取当前的文件的描述符标记
-                    //                    fcntl(client_fd, F_SETFL, flags |
-                    //                    O_NONBLOCK);
+                // 设置为非阻塞模式
+                //                    int flags = fcntl(client_fd, F_GETFL,
+                //                    0); // F_GET FL =>
+                //                    获取当前的文件的描述符标记
+                //                    fcntl(client_fd, F_SETFL, flags |
+                //                    O_NONBLOCK);
 
-                    // 添加监听事件
-                    struct epoll_event event;
-                    event.data.fd = client_fd;
-                    event.events = EPOLLIN | EPOLLRDHUP;
-                    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &event) ==
-                        -1) {
-                        perror("epoll_ctl");
-                    }
+                // 添加监听事件
+                struct epoll_event event;
+                event.data.fd = client_fd;
+                event.events = EPOLLIN | EPOLLRDHUP | EPOLLERR;
+                if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &event) ==
+                    -1) {
+                    perror("epoll_ctl");
                 }
 
                 if (client_fd == -1 && errno != EAGAIN &&
@@ -157,29 +158,30 @@ int main() {
                 }
             } else {
                 // 客户端的事件
-                if (events[i].events & EPOLLRDHUP) {
+                if (events[i].events & EPOLLRDHUP ||
+                    events[i].events & EPOLLERR) {
                     printf("客户端%d断开连接\n", fd);
                     connect_count--;
                     close(fd);
                     continue;
                 }
-                struct myDataPack *data = receive_data_pack(fd);
-                if (data != NULL) {
+                receive_data_pack(fd, datapack);
+                if (datapack != NULL) {
                     union myDataPackSubtype subtype;
-                    switch (data->type) {
+                    switch (datapack->type) {
                     case DATA_PACK_TYPE_INFO:
                         printf("收到来自客户端%d的信息:%*s\n", fd,
-                               (int)data->data_length, data->payload);
+                               (int)datapack->data_length, datapack->payload);
                         break;
                     case DATA_PACK_TYPE_COMMAND:
-                        switch (data->subtype.command_type) {
+                        switch (datapack->subtype.command_type) {
                         case DATA_PACK_TYPE_COMMAND_QUIT:
                             printf("收到退出信号\n");
                             subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                             send_data_pack(gen_data_pack(DATA_PACK_TYPE_STATUS,
                                                          subtype, 0, NULL,
-                                                         NULL),
-                                           fd, 1);
+                                                         datapack),
+                                           fd);
                             running_flag = 0;
                             break;
                         case DATA_PACK_TYPE_COMMAND_GET_INFO:
@@ -189,21 +191,23 @@ int main() {
                             send_data_pack(gen_data_pack(DATA_PACK_TYPE_INFO,
                                                          subtype,
                                                          strlen(message) + 1,
-                                                         message, NULL),
-                                           fd, 1);
+                                                         message, datapack),
+                                           fd);
                             break;
                         case DATA_PACK_TYPE_COMMAND_MKDIR:
-                            printf("正在创建文件夹%s\n", data->payload);
-                            if (mkdir(data->payload, 0777) < 0) perror("mkdir");
+                            printf("正在创建文件夹%s\n", datapack->payload);
+                            if (mkdir(datapack->payload, 0777) < 0)
+                                perror("mkdir");
                             break;
                         }
                         break;
                     case DATA_PACK_TYPE_FILE:
-                        switch (data->subtype.file_type) {
+                        switch (datapack->subtype.file_type) {
                         case DATA_PACK_TYPE_FILE_START:
-                            printf("收到新文件，文件名:%s\n", data->payload);
+                            printf("收到新文件，文件名:%s\n",
+                                   datapack->payload);
                             int new_file_fd =
-                                open(data->payload,
+                                open(datapack->payload,
                                      O_WRONLY | O_TRUNC | O_CREAT, DEFFILEMODE);
                             if (new_file_fd == -1) {
                                 perror("文件打开失败");
@@ -211,8 +215,8 @@ int main() {
                                     DATA_PACK_TYPE_STATUS_FAILED;
                                 send_data_pack(
                                     gen_data_pack(DATA_PACK_TYPE_STATUS,
-                                                  subtype, 0, NULL, NULL),
-                                    fd, 1);
+                                                  subtype, 0, NULL, datapack),
+                                    fd);
                             } else {
                                 file_size[fd] = 0;
 
@@ -222,15 +226,16 @@ int main() {
                                 subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                                 send_data_pack(
                                     gen_data_pack(DATA_PACK_TYPE_STATUS,
-                                                  subtype, 0, NULL, NULL),
-                                    fd, 1);
+                                                  subtype, 0, NULL, datapack),
+                                    fd);
                             }
                             break;
                         case DATA_PACK_TYPE_FILE_SENDING:
                             printf("当前文件已接收%ld字节数据\r",
-                                   file_size[fd] += data->data_length);
-                            if (!write_until_finish(file_fd[fd], data->payload,
-                                                    data->data_length)) {
+                                   file_size[fd] += datapack->data_length);
+                            if (!write_until_finish(file_fd[fd],
+                                                    datapack->payload,
+                                                    datapack->data_length)) {
                                 perror("receiving file -> write");
                                 exit(1);
                             }
@@ -241,8 +246,8 @@ int main() {
                             subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                             send_data_pack(gen_data_pack(DATA_PACK_TYPE_STATUS,
                                                          subtype, 0, NULL,
-                                                         NULL),
-                                           fd, 1);
+                                                         datapack),
+                                           fd);
                             close(file_fd[fd]);
                             break;
                         }
@@ -252,13 +257,12 @@ int main() {
                         break;
                     }
                 }
-                free(data);
             }
         }
     }
     // main loop finished
     free(message);
-
+    free(datapack);
     int fds[] = {epoll_fd, server_fd};
     close_all_fd(fds, sizeof fds);
 

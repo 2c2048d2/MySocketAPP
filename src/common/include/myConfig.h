@@ -6,7 +6,7 @@
 #define MYSOCKETAPP_MYCONFIG_H
 
 #define SERVER_PORT 8848
-#define BUF_SIZE (1 << 14)
+#define BUF_SIZE (1 << 12)
 #define STR_SIZE 1024
 #define MQ_NAME_SEND_DIR "/MySockAPP_File2Send"
 

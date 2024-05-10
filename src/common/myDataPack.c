@@ -20,8 +20,10 @@ struct myDataPack *gen_data_pack(enum myDataPackType type,
                                  struct myDataPack *dataPack) {
     //    printf("生成数据包中，payload大小为%ld，总大小：%ld\n", data_length,
     //    sizeof(struct myDataPack) + data_length);
-    if (dataPack == NULL)
+    if (dataPack == NULL) {
+        printf("Warning: NULL data pack ptr\n");
         dataPack = malloc(sizeof(struct myDataPack) + data_length);
+    }
     dataPack->type = type;
     dataPack->subtype = subtype;
     dataPack->data_length = data_length;
@@ -39,22 +41,12 @@ void receive_data(void *dest, int src_fd, unsigned long size) {
     }
 }
 
-struct myDataPack *receive_data_pack(int sock_fd) {
-    struct myDataPack *header = malloc(sizeof(struct myDataPack));
-    receive_data(header, sock_fd, sizeof(struct myDataPack));
-    if (header == NULL) return NULL;
-
-    struct myDataPack *output =
-        malloc(sizeof(struct myDataPack) + header->data_length);
-    if (output == NULL) return NULL; // Handle memory allocation failure
-    memcpy(output, header, sizeof(struct myDataPack));
-    receive_data(output->payload, sock_fd, header->data_length);
-    free(header);
-    return output;
+void receive_data_pack(int sock_fd, struct myDataPack *datapack) {
+    receive_data(datapack, sock_fd, sizeof(struct myDataPack));
+    receive_data(datapack->payload, sock_fd, datapack->data_length);
 }
 
-void send_data_pack(struct myDataPack *data_pack, int sock_fd,
-                    bool free_data_pack) {
+void send_data_pack(struct myDataPack *data_pack, int sock_fd) {
     if (data_pack == NULL) {
         printf("send_data_pack: data_pack is NULL \n");
         return;
@@ -65,8 +57,6 @@ void send_data_pack(struct myDataPack *data_pack, int sock_fd,
                                data_pack->data_length)) {
         perror("send_data_pack send");
     }
-
-    if (free_data_pack) free(data_pack);
 }
 
 bool write_until_finish(int fd, const void *buf, size_t n) {

@@ -54,10 +54,9 @@ struct myDataPack *gen_data_pack(enum myDataPackType type,
                                  unsigned long data_length, const char *payload,
                                  struct myDataPack *dataPack);
 
-struct myDataPack *receive_data_pack(int sock_fd);
+void receive_data_pack(int sock_fd, struct myDataPack *datapack);
 
-void send_data_pack(struct myDataPack *data_pack, int sock_fd,
-                    bool free_data_pack);
+void send_data_pack(struct myDataPack *data_pack, int sock_fd);
 
 bool write_until_finish(int fd, const void *buf, size_t n);
 

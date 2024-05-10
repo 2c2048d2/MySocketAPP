@@ -31,39 +31,44 @@ void *thread_send_dir(void *arg) {
     struct threadStartSendDirArg *data = arg;
 
     mqd_t mq = mq_open(MQ_NAME_SEND_DIR, O_RDONLY);
-    struct MQDataPack *dataPack = malloc(sizeof(struct MQDataPack));
+    struct MQDataPack *MQDataPack = malloc(sizeof(struct MQDataPack));
     bool running_flag = 1;
     while (running_flag) {
-        mq_receive(mq, (char *)(dataPack), sizeof(struct MQDataPack), NULL);
-        switch (dataPack->type) {
+        mq_receive(mq, (char *)(MQDataPack), sizeof(struct MQDataPack), NULL);
+        switch (MQDataPack->type) {
         case COMMAND_MKDIR:
-            send_command_mkdir(data->sockfd, dataPack->dest_path);
+            send_command_mkdir(data->sockfd, MQDataPack->dest_path,
+                               data->datapack);
             break;
         case SEND_FILE:
-            send_file(data->sockfd, dataPack->src_path, dataPack->dest_path);
+            send_file(data->sockfd, MQDataPack->src_path, MQDataPack->dest_path,
+                      data->datapack);
             break;
         case FINISH_FLAG:
             running_flag = 0;
             break;
         }
-        free(dataPack->dest_path);
-        free(dataPack->src_path);
+        free(MQDataPack->dest_path);
+        free(MQDataPack->src_path);
     }
-    free(dataPack);
+    free(MQDataPack);
     mq_close(mq);
     return NULL;
 }
 
-void send_dir(int sock_fd, const char *src_path, const char *dest_path) {
+void send_dir(int sock_fd, const char *src_path, const char *dest_path,
+              struct myDataPack *datapack) {
     struct threadStartSearchDirArg *searchDirArg =
         malloc(sizeof(struct threadStartSearchDirArg));
     searchDirArg->sockfd = sock_fd;
     searchDirArg->src_path = src_path;
     searchDirArg->dest_path = dest_path;
+    searchDirArg->datapack = datapack;
 
     struct threadStartSendDirArg *sendDirArg =
         malloc(sizeof(struct threadStartSendDirArg));
     sendDirArg->sockfd = sock_fd;
+    sendDirArg->datapack = datapack;
 
     pthread_t search_thread, send_thread;
     int flag = 0;
@@ -79,67 +84,66 @@ void send_dir(int sock_fd, const char *src_path, const char *dest_path) {
     free(sendDirArg);
 }
 
-void send_file(const int sock_fd, const char *src_path, const char *dest_path) {
-    if (access(src_path, F_OK | R_OK) < 0) {
+void send_file(const int sock_fd, const char *src_path, const char *dest_path,
+               struct myDataPack *datapack) {
+    if (access(src_path, F_OK) < 0) {
         printf("文件不存在或无读的权限\n");
         return;
     }
-
+    printf("send_file point0\n");
     union myDataPackSubtype subtype;
 
     printf("源文件路径:%s\n", src_path);
     printf("目标路径:%s\n", dest_path);
     subtype.file_type = DATA_PACK_TYPE_FILE_START;
     send_data_pack(gen_data_pack(DATA_PACK_TYPE_FILE, subtype,
-                                 strlen(dest_path) + 1, dest_path, NULL),
-                   sock_fd, 1);
+                                 strlen(dest_path) + 1, dest_path, datapack),
+                   sock_fd);
 
-    struct myDataPack *received_data_pack = receive_data_pack(sock_fd);
+    receive_data_pack(sock_fd, datapack);
 
-    if (received_data_pack->type != DATA_PACK_TYPE_STATUS ||
-        received_data_pack->subtype.status_type != DATA_PACK_TYPE_STATUS_OK) {
+    printf("send_file point1\n");
+
+    if (datapack->type != DATA_PACK_TYPE_STATUS ||
+        datapack->subtype.status_type != DATA_PACK_TYPE_STATUS_OK) {
         printf("对方未就绪\n");
-        free(received_data_pack);
         return;
     }
-    free(received_data_pack);
-
+    printf("send_file point2\n");
     const int file_sock = open(src_path, O_RDONLY);
     unsigned long length;
     subtype.file_type = DATA_PACK_TYPE_FILE_SENDING;
-    char *payload = malloc(sizeof(char) * BUF_SIZE);
-    struct myDataPack *dataPack = malloc(sizeof(struct myDataPack) + BUF_SIZE);
-    while ((length = read(file_sock, payload, BUF_SIZE))) {
+    datapack->type = DATA_PACK_TYPE_FILE;
+    datapack->subtype.file_type = DATA_PACK_TYPE_FILE_SENDING;
+    while ((length = read(file_sock, datapack->payload, BUF_SIZE))) {
         if (length < 0) {
             perror("send file -> read");
             return;
         }
-        send_data_pack(gen_data_pack(DATA_PACK_TYPE_FILE, subtype, length,
-                                     payload, dataPack),
-                       sock_fd, 0);
+        datapack->data_length = length;
+        send_data_pack(datapack, sock_fd);
     }
 
-    free(dataPack);
-    free(payload);
     subtype.file_type = DATA_PACK_TYPE_FILE_END;
-    send_data_pack(gen_data_pack(DATA_PACK_TYPE_FILE, subtype, 0, NULL, NULL),
-                   sock_fd, 1);
+    send_data_pack(
+        gen_data_pack(DATA_PACK_TYPE_FILE, subtype, 0, NULL, datapack),
+        sock_fd);
 
-    received_data_pack = receive_data_pack(sock_fd);
-    if (received_data_pack->type == DATA_PACK_TYPE_STATUS &&
-        received_data_pack->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
+    receive_data_pack(sock_fd, datapack);
+    if (datapack->type == DATA_PACK_TYPE_STATUS &&
+        datapack->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
         printf("传输完成，没有发现错误\n");
     } else printf("传输过程中出现错误\n");
-    free(received_data_pack);
 }
 
-void send_command_mkdir(const int sock_fd, const char *path) {
+void send_command_mkdir(const int sock_fd, const char *path,
+                        struct myDataPack *datapack) {
     printf("COMMAND: mkdir in %s\n", path);
     union myDataPackSubtype subtype;
     subtype.command_type = DATA_PACK_TYPE_COMMAND_MKDIR;
     send_data_pack(gen_data_pack(DATA_PACK_TYPE_COMMAND, subtype,
-                                 strlen(path) + 1, path, NULL),
-                   sock_fd, 1);
+                                 strlen(path) + 1, path, datapack),
+                   sock_fd);
 }
 
 void search_dir(const int sock_fd, const char *src_path, const char *dest_path,

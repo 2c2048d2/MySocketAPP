@@ -16,6 +16,8 @@
 #include <unistd.h>
 
 #include <stdbool.h>
+
+#include "myDataPack.h"
 enum MQDataPackType {
     COMMAND_MKDIR,
     SEND_FILE,
@@ -32,10 +34,12 @@ struct threadStartSearchDirArg {
     int sockfd;
     const char *src_path;
     const char *dest_path;
+    struct myDataPack *datapack;
 };
 
 struct threadStartSendDirArg {
     int sockfd;
+    struct myDataPack *datapack;
 };
 
 const char *path2filename(const char *path);
@@ -48,13 +52,16 @@ bool is_file(const char *path);
 
 bool is_file_dir(const char *path);
 
-void send_file(int sock_fd, const char *src_path, const char *dest_path);
+void send_file(const int sock_fd, const char *src_path, const char *dest_path,
+               struct myDataPack *datapack);
 
-void send_dir(int sock_fd, const char *src_path, const char *dest_path);
+void send_dir(int sock_fd, const char *src_path, const char *dest_path,
+              struct myDataPack *datapack);
 
 void search_dir(int sock_fd, const char *src_path, const char *dest_path,
                 int depth, mqd_t mq_fd);
 
-void send_command_mkdir(int sock_fd, const char *path);
+void send_command_mkdir(const int sock_fd, const char *path,
+                        struct myDataPack *datapack);
 
 #endif // MYSOCKETAPP_FILEFUNCTIONS_H
