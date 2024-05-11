@@ -64,4 +64,6 @@ void search_dir(int sock_fd, const char *src_path, const char *dest_path,
 void send_command_mkdir(const int sock_fd, const char *path,
                         struct myDataPack *datapack);
 
+void gen_mq_name(char *mq_name);
+
 #endif // MYSOCKETAPP_FILEFUNCTIONS_H

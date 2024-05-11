@@ -11,11 +11,14 @@
 // #include <errno.h>
 
 #include "fileFunctions.h"
+#include "myConfig.h"
 #include "myDataPack.h"
 
 void *thread_search_dir(void *arg) {
     struct threadStartSearchDirArg *data = arg;
-    mqd_t mq = mq_open(MQ_NAME_SEND_DIR, O_WRONLY);
+    char mq_name[MQ_LENGTH];
+    gen_mq_name(mq_name);
+    mqd_t mq = mq_open(mq_name, O_WRONLY);
     printf("开始搜索文件夹\n");
     search_dir(data->sockfd, data->src_path, data->dest_path, 0, mq);
     printf("搜索文件夹完毕\n");
@@ -29,8 +32,9 @@ void *thread_search_dir(void *arg) {
 
 void *thread_send_dir(void *arg) {
     struct threadStartSendDirArg *data = arg;
-
-    mqd_t mq = mq_open(MQ_NAME_SEND_DIR, O_RDONLY);
+    char mq_name[MQ_LENGTH];
+    gen_mq_name(mq_name);
+    mqd_t mq = mq_open(mq_name, O_RDONLY);
     struct MQDataPack *MQDataPack = malloc(sizeof(struct MQDataPack));
     bool running_flag = 1;
     while (running_flag) {
@@ -90,6 +94,7 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path,
         printf("无法访问文件%s\n", src_path);
         return;
     }
+    printf("%s开始传输\n", src_path);
     union myDataPackSubtype subtype;
 
     // printf("源文件路径:%s\n", src_path);
@@ -243,4 +248,8 @@ bool is_file_dir(const char *path) {
     struct stat stat_buf;
     if (stat(path, &stat_buf) != 0) return false;
     else return S_ISDIR(stat_buf.st_mode) || S_ISREG(stat_buf.st_mode);
+}
+
+void gen_mq_name(char *mq_name) {
+    sprintf(mq_name, "%s%d", MQ_NAME_SEND_DIR, getpid());
 }

@@ -97,19 +97,24 @@ int init_socket(int *client_fd) {
 }
 
 int init_MQ() {
-    mq_unlink(MQ_NAME_SEND_DIR);
+    char mq_name[MQ_LENGTH];
+    gen_mq_name(mq_name);
     struct mq_attr attr;
     attr.mq_curmsgs = 0;
     attr.mq_flags = 0;
     attr.mq_msgsize = sizeof(struct MQDataPack);
     attr.mq_maxmsg = 10;
-    int mq = mq_open(MQ_NAME_SEND_DIR, O_CREAT | O_EXCL, 0600, &attr);
+    int mq = mq_open(mq_name, O_CREAT | O_EXCL, 0600, &attr);
     mq_close(mq);
     if (mq < 0) return -1;
     return 0;
 }
 
-void cleanup() { mq_unlink(MQ_NAME_SEND_DIR); }
+void cleanup() {
+    char mq_name[MQ_LENGTH];
+    gen_mq_name(mq_name);
+    mq_unlink(mq_name);
+}
 
 int main() {
     int client_fd;

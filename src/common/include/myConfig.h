@@ -9,7 +9,7 @@
 #define BUF_SIZE (1 << 12)
 #define STR_SIZE 1024
 #define MQ_NAME_SEND_DIR "/MySockAPP_File2Send"
-
+#define MQ_LENGTH 64
 #ifndef DEFFILEMODE
 #define DEFFILEMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 #endif
