@@ -111,11 +111,11 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path,
         printf("对方未就绪\n");
         return;
     }
-    const int file_sock = open(src_path, O_RDONLY);
+    const int fd = open(src_path, O_RDONLY);
     unsigned long length;
     datapack->type = DATA_PACK_TYPE_FILE;
     datapack->subtype.file_type = DATA_PACK_TYPE_FILE_SENDING;
-    while ((length = read(file_sock, datapack->payload, BUF_SIZE))) {
+    while ((length = read(fd, datapack->payload, BUF_SIZE))) {
         if (length < 0) {
             perror("send file -> read");
             return;
@@ -130,6 +130,7 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path,
         sock_fd);
 
     receive_data_pack(sock_fd, datapack);
+    close(fd);
     if (datapack->type == DATA_PACK_TYPE_STATUS &&
         datapack->subtype.status_type == DATA_PACK_TYPE_STATUS_OK) {
         printf("%s传输完成，没有发现错误\n", src_path);

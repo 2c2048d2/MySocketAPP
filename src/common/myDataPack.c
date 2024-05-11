@@ -60,7 +60,7 @@ void send_data_pack(struct myDataPack *data_pack, int sock_fd) {
 }
 
 bool write_until_finish(int fd, const void *buf, size_t n) {
-    size_t cnt = 0, now = 0;
+    ssize_t cnt = 0, now = 0;
     do {
         now = write(fd, buf + cnt, n - cnt);
         if (now >= 0) cnt += now;
@@ -72,7 +72,7 @@ bool write_until_finish(int fd, const void *buf, size_t n) {
     return true;
 }
 bool read_until_finish(int fd, void *buf, size_t n) {
-    size_t cnt = 0, now = 0;
+    ssize_t cnt = 0, now = 0;
     do {
         now = read(fd, buf + cnt, n - cnt);
         if (now >= 0) cnt += now;
@@ -84,7 +84,7 @@ bool read_until_finish(int fd, void *buf, size_t n) {
     return true;
 }
 bool send_until_finish(int fd, const void *buf, size_t n) {
-    size_t cnt = 0, now = 0;
+    ssize_t cnt = 0, now = 0;
     do {
         now = send(fd, buf + cnt, n - cnt, 0);
         if (now >= 0) cnt += now;
