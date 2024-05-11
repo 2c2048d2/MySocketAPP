@@ -155,7 +155,8 @@ int main() {
                     if (events[i].events & EPOLLRDHUP ||
                         events[i].events & EPOLLERR) {
                         printf("客户端%s已断开连接\n", full_ip_str);
-                        exit(EXIT_SUCCESS);
+                        running_flag = 0;
+                        break;
                     }
                     receive_data_pack(client_fd, datapack);
                     if (datapack != NULL) {
@@ -197,8 +198,8 @@ int main() {
                         case DATA_PACK_TYPE_FILE:
                             switch (datapack->subtype.file_type) {
                             case DATA_PACK_TYPE_FILE_START:
-                                printf("收到新文件，文件名:%s\n",
-                                       datapack->payload);
+                                printf("收到来自%s的新文件，文件名:%s\n",
+                                       full_ip_str, datapack->payload);
                                 int new_file_fd = open(
                                     datapack->payload,
                                     O_WRONLY | O_TRUNC | O_CREAT, DEFFILEMODE);
@@ -239,7 +240,7 @@ int main() {
                                 break;
                             case DATA_PACK_TYPE_FILE_END:
                                 file_size[client_fd] = 0;
-                                printf("\n文件接收完毕\n");
+                                printf("来自%s的文件接收完毕\n", full_ip_str);
                                 subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                                 send_data_pack(
                                     gen_data_pack(DATA_PACK_TYPE_STATUS,

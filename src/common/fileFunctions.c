@@ -108,7 +108,6 @@ void send_file(const int sock_fd, const char *src_path, const char *dest_path,
     }
     const int file_sock = open(src_path, O_RDONLY);
     unsigned long length;
-    subtype.file_type = DATA_PACK_TYPE_FILE_SENDING;
     datapack->type = DATA_PACK_TYPE_FILE;
     datapack->subtype.file_type = DATA_PACK_TYPE_FILE_SENDING;
     while ((length = read(file_sock, datapack->payload, BUF_SIZE))) {

@@ -35,9 +35,11 @@ enum userOpt get_user_opt() {
         printf("1. 上传文件   2. 上传文件夹\n");
         printf("3. 下载文件   4. 下载文件夹\n");
         printf("5. 发送信息   6. 获取信息\n");
-        printf("7. 断开连接   8. 发送退出信号\n");
+        printf("7. 断开连接   \n");
 
-        fgets(input_buff, BUF_SIZE, stdin);
+        if (!fgets(input_buff, BUF_SIZE, stdin)) {
+            exit(EXIT_FAILURE);
+        }
         opt = strtol(input_buff, &end, 10);
 
         if (input_buff == end || *end != '\n') {
