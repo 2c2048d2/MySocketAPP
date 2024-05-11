@@ -10,4 +10,3 @@ add_compile_options(
 
 add_subdirectory(src/client)
 add_subdirectory(src/server)
-add_subdirectory(src/test)

@@ -14,6 +14,12 @@
 - [ ] 优化显示，做一个进度条
 
 ## 如何构建此项目？
+首先，此项目只能在`*nix`系统上运行，您需要安装以下软件
+```
+# ArchLinux
+sudo pacman -S git cmake make glibc gcc
+```
+然后执行以下命令即可
 ```
 git clone https://github.com/2c2048d2/MySocketAPP
 cd MySocketAPP
