@@ -7,19 +7,37 @@
 #include <fcntl.h>
 #include <malloc.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <sys/prctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "myConfig.h"
 #include "myDataPack.h"
 
 #define MAX_EVENTS 10
+
+void func_handle_subprocess(int sign) {
+    int status;
+    pid_t pid;
+
+    //    if ((pid = waitpid(0, &status, WNOHANG)) > 0) {
+    while ((pid = wait(&status)) > 0) {
+        if (WIFEXITED(status))
+            printf("------------child %d exit with %d\n", pid,
+                   WEXITSTATUS(status));
+        else if (WIFSIGNALED(status))
+            printf("child %d killed by the %dth signal\n", pid,
+                   WTERMSIG(status));
+    }
+}
 
 int init_server_socket(int *server_fd) {
     // 创建socket
@@ -99,6 +117,23 @@ int main() {
         return -1;
     }
     printf("服务器socket描述符为%d\n", server_fd);
+
+    struct sigaction sa;
+    sigset_t mask;
+
+    // 设置信号处理函数
+    sa.sa_handler = func_handle_subprocess;
+    sa.sa_flags = SA_RESTART;
+    sigemptyset(&sa.sa_mask); // 初始化信号集为空
+
+    // 将 SIGCHLD 添加到信号集中
+    sigaddset(&mask, SIGCHLD);
+    sa.sa_mask = mask; // 在信号处理程序执行期间阻塞 SIGCHLD
+
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        perror("sigaction failed");
+        exit(EXIT_FAILURE);
+    }
 
     // main loop
     uint connect_count = 0;
@@ -228,9 +263,9 @@ int main() {
                                 }
                                 break;
                             case DATA_PACK_TYPE_FILE_SENDING:
-                                // printf("当前文件已接收%ld字节数据\r",
-                                //        file_size[fd] +=
-                                //        datapack->data_length);
+                                printf("当前文件已接收%ld字节数据\r",
+                                       file_size[client_fd] +=
+                                       datapack->data_length);
                                 if (!write_until_finish(
                                         file_fd[client_fd], datapack->payload,
                                         datapack->data_length)) {
@@ -240,7 +275,7 @@ int main() {
                                 break;
                             case DATA_PACK_TYPE_FILE_END:
                                 file_size[client_fd] = 0;
-                                printf("来自%s的文件接收完毕\n", full_ip_str);
+                                printf("\n来自%s的文件接收完毕\n", full_ip_str);
                                 subtype.status_type = DATA_PACK_TYPE_STATUS_OK;
                                 send_data_pack(
                                     gen_data_pack(DATA_PACK_TYPE_STATUS,
@@ -257,16 +292,13 @@ int main() {
                     }
                 }
             }
-
-            int fds[] = {client_fd, epoll_fd};
+            free(message);
+            free(datapack);
+            int fds[] = {server_fd, epoll_fd};
             close_all_fd(fds, sizeof fds);
+            puts("清理完成，即将退出\n");
+            exit(EXIT_SUCCESS);
         }
     }
-
-    free(message);
-    free(datapack);
-    int fds[] = {server_fd};
-    close_all_fd(fds, sizeof fds);
-
     return 0;
 }
