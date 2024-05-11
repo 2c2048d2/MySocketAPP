@@ -144,10 +144,10 @@ void send_command_mkdir(const int sock_fd, const char *path,
 
 void search_dir(const int sock_fd, const char *src_path, const char *dest_path,
                 const int depth, const mqd_t mq_fd) {
-    printf(
-        "FUNC "
-        "search_dir:\n\tsockfd:%d\n\tsrc_path:%s\n\tdest_path:%s\n\tdepth:%d\n",
-        sock_fd, src_path, dest_path, depth);
+    // printf(
+    //     "FUNC "
+    //     "search_dir:\n\tsockfd:%d\n\tsrc_path:%s\n\tdest_path:%s\n\tdepth:%d\n",
+    //     sock_fd, src_path, dest_path, depth);
     if (depth > 10) {
         printf("递归深度最大为10层\n");
         return;

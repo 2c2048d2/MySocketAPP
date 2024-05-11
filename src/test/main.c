@@ -1,97 +1,90 @@
-#include <fcntl.h> /* For O_* constants */
-#include <mqueue.h>
-#include <pthread.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h> /* For mode constants */
+#include <sys/socket.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
-#define MQ_MSG_MAX_SIZE 512 ///< 最大消息长度
-#define MQ_MSG_MAX_ITEM 5   ///< 最大消息数目
+#define PORT 8080
+#define BUFFER_SIZE 1024
 
-static pthread_t s_thread1_id;
-static pthread_t s_thread2_id;
-static unsigned char s_thread1_running = 0;
-static unsigned char s_thread2_running = 0;
+void handle_client(int client_socket) {
+    char buffer[BUFFER_SIZE];
+    int read_size;
 
-static mqd_t s_mq;
-static char send_msg[10] = "hello";
-
-void *thread1_fun(void *arg) {
-    int ret = 0;
-
-    s_thread1_running = 1;
-    while (s_thread1_running) {
-        ret = mq_send(s_mq, send_msg, sizeof(send_msg), 0);
-        if (ret < 0) {
-            perror("mq_send error");
-        }
-        printf("send msg = %s\n", send_msg);
-        usleep(100 * 1000);
+    // 读取客户端发送的数据
+    while ((read_size = read(client_socket, buffer, sizeof(buffer))) > 0) {
+        // 输出接收到的数据
+        write(client_socket, buffer, read_size);
+        write(STDOUT_FILENO, buffer, read_size);
     }
 
-    pthread_exit(NULL);
+    if (read_size == 0) {
+        puts("客户端断开连接");
+    } else if (read_size == -1) {
+        perror("读取失败");
+    }
+
+    // 关闭客户端socket
+    close(client_socket);
 }
 
-void *thread2_fun(void *arg) {
-    char buf[MQ_MSG_MAX_SIZE];
-    int recv_size = 0;
+int main() {
+    int server_fd, client_socket, c;
+    struct sockaddr_in server, client;
+    pid_t pid;
 
-    s_thread2_running = 1;
-    while (s_thread2_running) {
-        recv_size = mq_receive(s_mq, &buf[0], sizeof(buf), NULL);
-        if (-1 != recv_size) {
-            printf("receive msg = %s\n", buf);
+    // 创建socket
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+        perror("socket创建失败");
+        exit(EXIT_FAILURE);
+    }
+
+    // 设置socket地址
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons(PORT);
+
+    // 绑定socket
+    if (bind(server_fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
+        perror("绑定失败");
+        exit(EXIT_FAILURE);
+    }
+
+    // 监听
+    if (listen(server_fd, 3) < 0) {
+        perror("监听失败");
+        exit(EXIT_FAILURE);
+    }
+
+    // 等待并接受连接
+    puts("等待客户端连接...");
+    c = sizeof(struct sockaddr_in);
+    while ((client_socket = accept(server_fd, (struct sockaddr *)&client,
+                                   (socklen_t *)&c))) {
+        puts("连接已建立");
+
+        // fork一个进程来处理新的连接
+        pid = fork();
+        if (pid < 0) {
+            perror("fork失败");
+            exit(EXIT_FAILURE);
+        }
+
+        // 子进程处理客户端连接
+        if (pid == 0) {
+            close(server_fd); // 子进程不需要监听socket
+            handle_client(client_socket);
+            exit(EXIT_SUCCESS);
         } else {
-            perror("mq_receive error");
-            break;
+            close(client_socket); // 父进程不需要客户端socket
         }
-
-        usleep(100 * 1000);
     }
 
-    pthread_exit(NULL);
-}
-
-int main(void) {
-    int ret = 0;
-    struct mq_attr attr = {0};
-    attr.mq_maxmsg = MQ_MSG_MAX_ITEM;
-    attr.mq_msgsize = MQ_MSG_MAX_SIZE;
-    attr.mq_flags = 0;
-    s_mq = mq_open("/mq", O_CREAT | O_RDWR, 0777, &attr);
-    if (-1 == s_mq) {
-        perror("mq_open error");
-        return -1;
-    }
-
-    ///< 创建线程1
-    ret = pthread_create(&s_thread1_id, NULL, thread1_fun, NULL);
-    if (ret != 0) {
-        printf("thread1_create error!\n");
+    if (client_socket < 0) {
+        perror("接受连接失败");
         exit(EXIT_FAILURE);
-    }
-    ret = pthread_detach(s_thread1_id);
-    if (ret != 0) {
-        printf("s_thread1_id error!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    ///< 创建线程2
-    ret = pthread_create(&s_thread2_id, NULL, thread2_fun, NULL);
-    if (ret != 0) {
-        printf("thread2_create error!\n");
-        exit(EXIT_FAILURE);
-    }
-    ret = pthread_detach(s_thread2_id);
-    if (ret != 0) {
-        printf("s_thread2_id error!\n");
-        exit(EXIT_FAILURE);
-    }
-
-    while (1) {
-        sleep(1);
     }
 
     return 0;
